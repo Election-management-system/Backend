@@ -20,7 +20,7 @@ import lombok.ToString;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(callSuper = true , exclude = {"VoterDetails"})
+@ToString(callSuper = true , exclude = {"voterDetails" , "electionDetails"})
 public class Candidate extends  BaseEntity {
 	
 	@Column(name = "party_name", length = 50 , nullable = false)
@@ -35,13 +35,12 @@ public class Candidate extends  BaseEntity {
 	// Candidate 1-->1 Voter
 	@OneToOne(cascade = CascadeType.ALL,fetch = FetchType.LAZY) //mandatory
 	@JoinColumn(name="voter_id",nullable = false)
-	private Voter VoterDetails;
+	private Voter voterDetails;
 	
-//	@Column(name = "total_votes")
-//	private int totalVotes;
-//	
-//	@Column(name = "is_winner")
-//	private boolean isWinner;
+	// Candidate 1-->1 election_id
+    @OneToOne(cascade = CascadeType.ALL,fetch = FetchType.LAZY) //mandatory
+	@JoinColumn(name="election_id",nullable = false)
+	private Election electionDetails;
 
 	
 }
