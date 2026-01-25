@@ -32,14 +32,18 @@ public class Voter extends BaseEntity {
 	
 	@Column(name = "is_voted" , nullable = false )
 	private boolean isVoted;
+	
+	@Column(name = "is_approved",nullable = false)
+	private boolean isApproved;
 
-	public Voter(String firstName, String lastName, String email, String password, boolean isVoted) {
+	public Voter(String firstName, String lastName, String email, String password, boolean isVoted, boolean isApproved) {
 		super();
 		this.firstName = firstName;
 		this.lastName = lastName;
 		this.email = email;
 		this.password = password;
 		this.isVoted = isVoted;
+		this.isApproved = isApproved;
 	}
 	
 	
