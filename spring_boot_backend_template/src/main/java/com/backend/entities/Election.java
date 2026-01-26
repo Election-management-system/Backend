@@ -41,7 +41,8 @@ public class Election extends BaseEntity {
 	private LocalDate campaignEndDate;
 	
 	@Column(name = "election_norms",length = 500, nullable = false)
-	private String elctionNorms;
+	 private String electionNorms;
+;
 	
 	@Column(name = "is_active")
 	private boolean isactive;
@@ -55,7 +56,7 @@ public class Election extends BaseEntity {
 		this.nominationStartDate = nominationStartDate;
 		this.nominationEndDate = nominationEndDate;
 		this.campaignEndDate = campaignEndDate;
-		this.elctionNorms = elctionNorms;
+		this.electionNorms = elctionNorms;
 	}
 	
 	

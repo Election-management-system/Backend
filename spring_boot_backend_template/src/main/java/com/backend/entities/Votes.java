@@ -9,13 +9,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
-@Entity
-@Table(name = "votes")
+
 @AttributeOverride(name = "id", column = @Column(name = "vote_id"))
 //Lombok annotations
 @NoArgsConstructor
@@ -23,12 +23,24 @@ import lombok.ToString;
 @Setter
 
 @ToString(callSuper = true , exclude = {"myCandidate" , "myElection"})
+@Entity
+@Table(
+  name = "votes",
+  uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"voter_id", "election_id"})
+  }
+)
+
 public class Votes extends BaseEntity {
 	
-	    // vote 1-->1 Voter
-		@OneToOne(cascade = CascadeType.ALL,fetch = FetchType.LAZY) //mandatory
-		@JoinColumn(name="voter_id",nullable = false)
-		private Voter VoterDetails;
+//	    // vote 1-->1 Voter
+//		@OneToOne(cascade = CascadeType.ALL,fetch = FetchType.LAZY) //mandatory
+//		@JoinColumn(name="voter_id",nullable = false)
+//		private Voter VoterDetails;
+	
+	    @ManyToOne
+	    @JoinColumn(name = "voter_id", nullable = false)
+     	private Voter voter;
 		
 		// votes * ------> 1 candidate (many to one)
 		@ManyToOne

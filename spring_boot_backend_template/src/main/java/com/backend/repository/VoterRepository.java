@@ -1,5 +1,10 @@
 package com.backend.repository;
 
-public class VoterRepository {
+import org.springframework.data.jpa.repository.JpaRepository;
 
+import com.backend.entities.Voter;
+
+public interface VoterRepository extends JpaRepository<Voter, Long>{
+
+	
 }

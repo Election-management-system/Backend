@@ -6,6 +6,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -20,7 +21,7 @@ import lombok.ToString;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(callSuper = true , exclude = {"voterDetails" , "electionDetails"})
+@ToString(callSuper = true , exclude = {"voterDetails" , "myElection"})
 public class Candidate extends  BaseEntity {
 	
 	@Column(name = "party_name", length = 50 , nullable = false)
@@ -37,10 +38,15 @@ public class Candidate extends  BaseEntity {
 	@JoinColumn(name="voter_id",nullable = false)
 	private Voter voterDetails;
 	
-	// Candidate 1-->1 election_id
-    @OneToOne(cascade = CascadeType.ALL,fetch = FetchType.LAZY) //mandatory
-	@JoinColumn(name="election_id",nullable = false)
-	private Election electionDetails;
+//	// Candidate 1-->1 election_id
+//    @OneToOne(cascade = CascadeType.ALL,fetch = FetchType.LAZY) //mandatory
+//	@JoinColumn(name="election_id",nullable = false)
+//	private Election electionDetails;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "election_id", nullable = false)
+    private Election myElection;
+
 
 	
 }
