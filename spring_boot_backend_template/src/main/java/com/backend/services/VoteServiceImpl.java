@@ -1,5 +1,7 @@
 package com.backend.services;
 
+import java.time.LocalDate;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,9 @@ import com.backend.repository.VoterRepository;
 @Service
 @Transactional
 public class VoteServiceImpl implements VoteService {
+	
+	@Autowired
+	private ElectionService electionService;
 
     @Autowired
     private VoteRepository voteRepository;
@@ -56,22 +61,32 @@ public class VoteServiceImpl implements VoteService {
                 .orElseThrow(() ->
                         new RuntimeException("Election not found with ID: " + dto.getElectionId())
                 );
+        
+    
+        // 🔒 FAIL-SAFE AUTO CLOSE
+        electionService.autoCloseIfExpired(election);
+
+       
 
         // 5️⃣ Check election status
         if (!election.isIsactive()) {
             throw new RuntimeException("Election is not active");
         }
 
-        // (Optional but recommended)
-        // if (!election.getElectionDate().equals(LocalDate.now())) {
-        //     throw new RuntimeException("Voting is not allowed today");
-        // }
+       //  (Optional but recommended)
+         if (!election.getElectionDate().equals(LocalDate.now())) {
+             throw new RuntimeException("Voting is not allowed today");
+         }
 
         // 6️⃣ Fetch candidate
         Candidate candidate = candidateRepository.findById(dto.getCandidateId())
                 .orElseThrow(() ->
-                        new RuntimeException("Candidate not found with ID: " + dto.getCandidateId())
+                        new RuntimeException("Candidate not found with ID: " + dto.getCandidateId())      
                 );
+        
+        if (!candidate.isApproved()) {
+            throw new RuntimeException("Candidate is not approved");
+        }
 
         // 7️⃣ Ensure candidate belongs to the same election
         if (!candidate.getMyElection().getId().equals(election.getId())) {
@@ -82,7 +97,7 @@ public class VoteServiceImpl implements VoteService {
         Votes vote = new Votes();
         vote.setVoter(voter);
         vote.setMyCandidate(candidate);
-        vote.setMyElection(election);
+        vote.setElection(election);
 
         voteRepository.save(vote);
 

@@ -2,12 +2,12 @@ package com.backend.services;
 
 import java.util.List;
 
-
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.backend.dtos.PendingVoterResponseDTO;
 import com.backend.dtos.VoterRegisterDTO;
 import com.backend.dtos.VoterResponseDTO;
 import com.backend.entities.Voter;
@@ -15,6 +15,7 @@ import com.backend.repository.VoterRepository;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
 
 
 
@@ -100,6 +101,50 @@ public class VoterServiceImpl  implements VoterService{
 
 	    return "Voter deleted successfully with ID: " + voterId;
 	}
+
+	
+
+    @Override
+    public String approveVoter(Long voterId) {
+
+        Voter voter = voterRepository.findById(voterId)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Voter not found with ID: " + voterId)
+                );
+
+        // Optional idempotency check
+        if (voter.isApproved()) {
+            return "Voter is already approved";
+        }
+
+        voter.setApproved(true);
+        voterRepository.save(voter);
+
+        return "Voter approved successfully";
+    }
+
+    @Override
+    public List<PendingVoterResponseDTO> getPendingVoters() {
+
+        return voterRepository.findAllPendingVoters()
+                .stream()
+                .map(voter -> {
+                    PendingVoterResponseDTO dto =
+                            new PendingVoterResponseDTO();
+
+                    dto.setVoterId(voter.getId());
+                    dto.setFirstName(voter.getFirstName());
+                    dto.setLastName(voter.getLastName());
+                    dto.setEmail(voter.getEmail());
+                    dto.setMobileNo(voter.getMobileNo());
+                    dto.setAddress(voter.getAddress());
+                    dto.setDob(voter.getDOB());
+
+                    return dto;
+                })
+                .toList();
+    }
 
 	
 	

@@ -22,7 +22,7 @@ import lombok.ToString;
 @Getter
 @Setter
 
-@ToString(callSuper = true , exclude = {"myCandidate" , "myElection"})
+@ToString(callSuper = true , exclude = {"myCandidate" , "election"})
 @Entity
 @Table(
   name = "votes",
@@ -51,6 +51,6 @@ public class Votes extends BaseEntity {
 		// votes * ------> 1 election (many to one)
 		@ManyToOne
 		@JoinColumn(name="election_id",nullable = false)
-		private Election myElection;
+		private Election election;
 
 }

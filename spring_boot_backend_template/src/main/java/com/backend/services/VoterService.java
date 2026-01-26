@@ -3,6 +3,7 @@ package com.backend.services;
 
 import java.util.List;
 
+import com.backend.dtos.PendingVoterResponseDTO;
 import com.backend.dtos.VoterRegisterDTO;
 import com.backend.dtos.VoterResponseDTO;
 import com.backend.entities.Voter;
@@ -22,6 +23,10 @@ public interface VoterService {
 	String updateVoter(Long voterId, @Valid VoterRegisterDTO voter);
 	
     String deleteVoter(Long voterId);
+    
+    String approveVoter(Long voterId);
+    
+    List<PendingVoterResponseDTO> getPendingVoters();
 		
 	
 
