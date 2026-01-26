@@ -1,1 +1,10 @@
 /.metadata/
+/application.properties
+/logs/
+/temp/
+*.log
+*.tmp
+.DS_Store
+.idea/
+.vscode/
+*.iml       
