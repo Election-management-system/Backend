@@ -15,6 +15,7 @@ import com.backend.exception.BadRequestException;
 import com.backend.exception.BusinessRuleException;
 import com.backend.exception.ResourceNotFoundException;
 import com.backend.repository.VoterRepository;
+import com.backend.services.EmailClient;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,9 @@ public class VoterServiceImpl implements VoterService {
     private final ModelMapper modelMapper;
     private final PasswordEncoder passwordEncoder;
 
+    // 🔔 NEW: Email client
+    private final EmailClient emailClient;
+
     @Override
     public List<VoterResponseDTO> getAllVoters() {
 
@@ -40,7 +44,6 @@ public class VoterServiceImpl implements VoterService {
     @Override
     public VoterResponseDTO registerVoter(VoterRegisterDTO dto) {
 
-        // 🔒 Optional but RECOMMENDED uniqueness checks
         if (voterRepository.existsByEmail(dto.getEmail())) {
             throw new BadRequestException(
                     "Voter already exists with email: " + dto.getEmail());
@@ -63,7 +66,6 @@ public class VoterServiceImpl implements VoterService {
         voter.setMobileNo(dto.getMobileNo());
 
         voter.setApproved(false);
-       // voter.setVoted(false);
         voter.setRole("ROLE_VOTER");
 
         voterRepository.save(voter);
@@ -94,7 +96,6 @@ public class VoterServiceImpl implements VoterService {
 
         modelMapper.map(voterDto, existingVoter);
 
-        // 🔐 Re-hash password if updated
         if (voterDto.getPassword() != null) {
             existingVoter.setPassword(
                     passwordEncoder.encode(voterDto.getPassword()));
@@ -114,7 +115,6 @@ public class VoterServiceImpl implements VoterService {
                                 "Voter not found with ID: " + voterId)
                 );
 
-        // Soft delete
         voter.setApproved(false);
         voterRepository.save(voter);
 
@@ -137,6 +137,18 @@ public class VoterServiceImpl implements VoterService {
 
         voter.setApproved(true);
         voterRepository.save(voter);
+
+        // 🔔 SEND EMAIL AFTER APPROVAL
+        try {
+            emailClient.sendVoterApprovedEmail(
+                    voter.getEmail(),
+                    voter.getFirstName() + " " + voter.getLastName()
+            );
+        } catch (Exception ex) {
+            // Email failure should NOT rollback approval
+            // (important business decision)
+            System.err.println("Email sending failed: " + ex.getMessage());
+        }
 
         return "Voter approved successfully";
     }
