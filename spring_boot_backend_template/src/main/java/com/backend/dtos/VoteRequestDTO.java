@@ -8,12 +8,12 @@ import lombok.Setter;
 @Setter
 public class VoteRequestDTO {
 
-    @NotNull
+    @NotNull(message = "Voter ID is required")
     private Long voterId;
 
-    @NotNull
+    @NotNull(message = "Candidate ID is required")
     private Long candidateId;
 
-    @NotNull
+    @NotNull(message = "Election ID is required")
     private Long electionId;
 }
