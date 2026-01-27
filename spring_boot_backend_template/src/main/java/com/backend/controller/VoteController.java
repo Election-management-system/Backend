@@ -3,6 +3,7 @@ package com.backend.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,6 +26,7 @@ public class VoteController {
 
     @PostMapping
     @Operation(description = "Cast vote")
+    @PreAuthorize("hasRole('VOTER')") // Only authenticated voters can cast votes
     public ResponseEntity<?> castVote(
             @Valid @RequestBody VoteRequestDTO voteRequest) {
 
