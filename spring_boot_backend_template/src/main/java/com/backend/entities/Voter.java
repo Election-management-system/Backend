@@ -9,69 +9,62 @@ import lombok.*;
 @Entity
 @Table(name = "Voters")
 @AttributeOverride(name = "id", column = @Column(name = "Voter_id"))
-//Lombok annotations
+// Lombok annotations
 @NoArgsConstructor
 @Getter
 @Setter
 
 @ToString(callSuper = true)
 public class Voter extends BaseEntity {
-	
-	
-	@Column(name = "first_name", length = 50 , nullable = false)
+
+	@Column(name = "first_name", length = 50, nullable = false)
 	private String firstName;
-	
-	@Column(name = "last_name", length = 50 , nullable = false)
+
+	@Column(name = "last_name", length = 50, nullable = false)
 	private String lastName;
-	
-	@Column(name = "email", length = 50 ,unique = true, nullable = false)
+
+	@Column(name = "email", length = 50, unique = true, nullable = false)
 	private String email;
-	
-	@Column(name = "password", length = 250 , nullable = false)
+
+	@Column(name = "password", length = 250, nullable = false)
 	private String password;
-	
+
 	@Column(name = "birth_date", nullable = false)
-	private LocalDate DOB;
-	
-	@Column(name = "aadharcard_no",unique = true,length = 20, nullable = false)
+	private LocalDate dateOfBirth;
+
+	@Column(name = "aadharcard_no", unique = true, length = 20, nullable = false)
 	private String aadharCardNo;
-	
-	@Column(name = "address",length = 100, nullable = false)
+
+	@Column(name = "address", length = 100, nullable = false)
 	private String address;
-	
-	@Column(name = "mobile_no",length = 20, nullable = false)
+
+	@Column(name = "mobile_no", length = 20, nullable = false)
 	private String mobileNo;
-	
-//	@Column(name = "is_voted" , nullable = false )
-//	private boolean isVoted;
-	
-	@Column(name = "is_approved",nullable = false)
+
+	// @Column(name = "is_voted" , nullable = false )
+	// private boolean isVoted;
+
+	@Column(name = "is_approved", nullable = false)
 	private boolean isApproved;
-	
+
 	@Column(name = "role", nullable = false)
 	private String role;
 
-
-	public Voter(String firstName, String lastName, String email, String password, LocalDate dOB, String aadharCardNo,
-			String address, String mobileNo, boolean isApproved , String role) {
+	public Voter(String firstName, String lastName, String email, String password, LocalDate dateOfBirth,
+			String aadharCardNo,
+			String address, String mobileNo, boolean isApproved, String role) {
 		super();
 		this.firstName = firstName;
 		this.lastName = lastName;
 		this.email = email;
 		this.password = password;
-		DOB = dOB;
+		this.dateOfBirth = dateOfBirth;
 		this.aadharCardNo = aadharCardNo;
 		this.address = address;
 		this.mobileNo = mobileNo;
-	
+
 		this.isApproved = isApproved;
 		this.role = role;
 	}
-
-	
-	
-	
-	
-	
 
 }

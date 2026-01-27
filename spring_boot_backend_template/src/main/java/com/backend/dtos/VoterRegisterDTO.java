@@ -41,7 +41,7 @@ public class VoterRegisterDTO {
 	@NotNull(message = "Date of birth is required")
 	@Past(message = "Date of birth must be in the past")
 	@JsonFormat(pattern = "yyyy-MM-dd")
-	private LocalDate DOB;
+	private LocalDate dateOfBirth;
 
 	@NotBlank(message = "Aadhar card number is required")
 	@Pattern(regexp = "^[0-9]{12}$", message = "Aadhar card number must be exactly 12 digits")
