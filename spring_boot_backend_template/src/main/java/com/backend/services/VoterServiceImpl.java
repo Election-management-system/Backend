@@ -3,7 +3,7 @@ package com.backend.services;
 import java.util.List;
 
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,111 +11,128 @@ import com.backend.dtos.PendingVoterResponseDTO;
 import com.backend.dtos.VoterRegisterDTO;
 import com.backend.dtos.VoterResponseDTO;
 import com.backend.entities.Voter;
+import com.backend.exception.BadRequestException;
+import com.backend.exception.BusinessRuleException;
+import com.backend.exception.ResourceNotFoundException;
 import com.backend.repository.VoterRepository;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-
-
-
-
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class VoterServiceImpl  implements VoterService{
-	
-	//dependency
-	@Autowired
-	private final VoterRepository voterRepository;
-	private final ModelMapper modelMapper;
+public class VoterServiceImpl implements VoterService {
 
-	@Override
-	public List<VoterResponseDTO> getAllVoters() {
+    private final VoterRepository voterRepository;
+    private final ModelMapper modelMapper;
+    private final PasswordEncoder passwordEncoder;
 
-		
-		return voterRepository.findAll()
-				.stream()
-				.map(voter -> modelMapper.map(voter, VoterResponseDTO.class))
-				.toList();
-				
-	}
+    @Override
+    public List<VoterResponseDTO> getAllVoters() {
 
-	@Override
-	public String registerVoter(VoterRegisterDTO voter) {
-	    String msg = "Voter Registration Failed";
+        return voterRepository.findAll()
+                .stream()
+                .map(voter -> modelMapper.map(voter, VoterResponseDTO.class))
+                .toList();
+    }
 
-	    // DTO → Entity conversion
-	    Voter newVoter = modelMapper.map(voter, Voter.class);
+    @Override
+    public VoterResponseDTO registerVoter(VoterRegisterDTO dto) {
 
-	    // Save entity
-	    Voter savedVoter = voterRepository.save(newVoter);
+        // 🔒 Optional but RECOMMENDED uniqueness checks
+        if (voterRepository.existsByEmail(dto.getEmail())) {
+            throw new BadRequestException(
+                    "Voter already exists with email: " + dto.getEmail());
+        }
 
-	    // Check save success
-	    if (savedVoter != null ) 
-	        msg = "Voter Registered Successfully";
-	    return msg;
-	}
+        if (voterRepository.existsByAadharCardNo(dto.getAadharCardNo())) {
+            throw new BadRequestException(
+                    "Voter already exists with Aadhar number");
+        }
 
-	@Override
-	public VoterResponseDTO getVoterById(Long voterId) {
-		// TODO Auto-generated method stub
-		
-		Voter voter =  voterRepository.findById(voterId).orElse(null);
-		
-		VoterResponseDTO newVoter = modelMapper.map(voter, VoterResponseDTO.class);
-		
-		return newVoter;
-		
-	}
+        Voter voter = new Voter();
 
-	@Override
-	public String updateVoter(Long voterId, @Valid VoterRegisterDTO voterDto) {
+        voter.setFirstName(dto.getFirstName());
+        voter.setLastName(dto.getLastName());
+        voter.setEmail(dto.getEmail());
+        voter.setPassword(passwordEncoder.encode(dto.getPassword()));
+        voter.setDOB(dto.getDOB());
+        voter.setAadharCardNo(dto.getAadharCardNo());
+        voter.setAddress(dto.getAddress());
+        voter.setMobileNo(dto.getMobileNo());
 
-	    // 1. Fetch existing voter (MANDATORY)
-	    Voter existingVoter = voterRepository.findById(voterId)
-	            .orElseThrow(() ->
-	                    new RuntimeException("Voter not found with ID: " + voterId)
-	            );
+        voter.setApproved(false);
+       // voter.setVoted(false);
+        voter.setRole("ROLE_VOTER");
 
-	    // 2. Map DTO → existing entity
-	    modelMapper.map(voterDto, existingVoter);
+        voterRepository.save(voter);
 
-	    // 3. Save updated voter
-	    voterRepository.save(existingVoter);
+        return modelMapper.map(voter, VoterResponseDTO.class);
+    }
 
-	    return "Voter updated successfully with ID: " + voterId;
-	}
+    @Override
+    public VoterResponseDTO getVoterById(Long voterId) {
 
+        Voter voter = voterRepository.findById(voterId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Voter not found with ID: " + voterId)
+                );
 
-	@Override
-	public String deleteVoter(Long voterId) {
+        return modelMapper.map(voter, VoterResponseDTO.class);
+    }
 
-	    Voter voter = voterRepository.findById(voterId)
-	            .orElseThrow(() ->
-	                    new RuntimeException("Voter not found with ID: " + voterId)
-	            );
+    @Override
+    public String updateVoter(Long voterId, @Valid VoterRegisterDTO voterDto) {
 
-	    voter.setApproved(false); // soft delete
-	    voterRepository.save(voter);
+        Voter existingVoter = voterRepository.findById(voterId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Voter not found with ID: " + voterId)
+                );
 
-	    return "Voter deleted successfully with ID: " + voterId;
-	}
+        modelMapper.map(voterDto, existingVoter);
 
-	
+        // 🔐 Re-hash password if updated
+        if (voterDto.getPassword() != null) {
+            existingVoter.setPassword(
+                    passwordEncoder.encode(voterDto.getPassword()));
+        }
+
+        voterRepository.save(existingVoter);
+
+        return "Voter updated successfully with ID: " + voterId;
+    }
+
+    @Override
+    public String deleteVoter(Long voterId) {
+
+        Voter voter = voterRepository.findById(voterId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Voter not found with ID: " + voterId)
+                );
+
+        // Soft delete
+        voter.setApproved(false);
+        voterRepository.save(voter);
+
+        return "Voter deleted successfully with ID: " + voterId;
+    }
 
     @Override
     public String approveVoter(Long voterId) {
 
         Voter voter = voterRepository.findById(voterId)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                                 "Voter not found with ID: " + voterId)
                 );
 
-        // Optional idempotency check
         if (voter.isApproved()) {
-            return "Voter is already approved";
+            throw new BusinessRuleException(
+                    "Voter is already approved");
         }
 
         voter.setApproved(true);
@@ -145,9 +162,4 @@ public class VoterServiceImpl  implements VoterService{
                 })
                 .toList();
     }
-
-	
-	
-
-
 }

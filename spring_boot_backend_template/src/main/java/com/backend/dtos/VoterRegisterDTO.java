@@ -30,4 +30,6 @@ public class VoterRegisterDTO {
 	private String address;
 	
 	private String mobileNo;
+	
+
 }

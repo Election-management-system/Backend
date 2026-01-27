@@ -33,4 +33,8 @@ public class Admin extends BaseEntity {
 	@Column(name = "password", length = 250 , nullable = false)
 	private String password;
 	
+	@Column(name = "role", nullable = false)
+	private String role;
+
+	
 }

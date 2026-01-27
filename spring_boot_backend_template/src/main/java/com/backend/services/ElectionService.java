@@ -15,5 +15,7 @@ public interface ElectionService {
 	String createElection(ElectionCreateDTO dto);
 
 	void autoCloseIfExpired(Election election);
+	
+	String activateElection(Long electionId);
 
 }

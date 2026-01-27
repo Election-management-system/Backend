@@ -16,7 +16,7 @@ public interface VoterService {
 
 	List<VoterResponseDTO> getAllVoters();
 
-	String registerVoter(VoterRegisterDTO voter);
+	VoterResponseDTO registerVoter(VoterRegisterDTO voter);
 
 	VoterResponseDTO getVoterById(Long voterId);
 

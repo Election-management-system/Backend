@@ -13,7 +13,7 @@ public interface ElectionRepository extends JpaRepository<Election, Long> {
 
 //	List<Election> findByElectionDateGreaterThanEqualAndaIsactiveTrueOrderByElectionDateAsc(LocalDate today);
 
-	List<Election> findByElectionDateGreaterThanEqualAndIsactiveTrueOrderByElectionDateAsc(LocalDate today);
+	List<Election> findByElectionDateGreaterThanEqualOrderByElectionDateAsc(LocalDate today);
 	
 	 @Modifying
 	    @Query(

@@ -20,5 +20,5 @@ public class CandidateRegisterDTO {
 
     private String manifesto;   // optional
     
-    private byte[] partyLogo;
+  //  private byte[] partyLogo;
 }

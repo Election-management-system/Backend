@@ -6,13 +6,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import com.backend.dtos.AdminRegisterDTO;
 import com.backend.dtos.ElectionCreateDTO;
+import com.backend.services.AdminService;
 import com.backend.services.CandidateService;
 import com.backend.services.ElectionService;
 import com.backend.services.ResultService;
 import com.backend.services.VoterService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 
 @RestController
@@ -32,6 +35,28 @@ public class AdminController {
     
     @Autowired
     private ResultService resultService;
+    
+    
+    @Autowired
+    private  AdminService adminService;
+//    
+//    public AdminController(AdminService adminService) {
+//        this.adminService = adminService;
+//    }
+//    
+//    // 🔐 ADMIN ONLY
+//    @PostMapping("/register")
+//    public ResponseEntity<?> registerAdmin(
+//            @RequestBody AdminRegisterDTO dto) {
+//
+//        return ResponseEntity.ok(adminService.registerAdmin(dto));
+//    }
+
+    @PostMapping("/register")
+    @PermitAll
+    public ResponseEntity<?> registerAdmin(@RequestBody AdminRegisterDTO dto) {
+        return ResponseEntity.ok(adminService.registerAdmin(dto));
+    }
 
 
     
@@ -85,6 +110,15 @@ public class AdminController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(electionService.createElection(dto));
+    }
+    
+    @PutMapping("/elections/{electionId}/activate")
+    public ResponseEntity<?> activateElection(
+            @PathVariable Long electionId) {
+
+        return ResponseEntity.ok(
+                electionService.activateElection(electionId)
+        );
     }
     
     @PostMapping("/elections/{electionId}/declare-winner")

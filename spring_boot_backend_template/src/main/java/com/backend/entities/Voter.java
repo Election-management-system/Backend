@@ -42,14 +42,18 @@ public class Voter extends BaseEntity {
 	@Column(name = "mobile_no",length = 20, nullable = false)
 	private String mobileNo;
 	
-	@Column(name = "is_voted" , nullable = false )
-	private boolean isVoted;
+//	@Column(name = "is_voted" , nullable = false )
+//	private boolean isVoted;
 	
 	@Column(name = "is_approved",nullable = false)
 	private boolean isApproved;
+	
+	@Column(name = "role", nullable = false)
+	private String role;
+
 
 	public Voter(String firstName, String lastName, String email, String password, LocalDate dOB, String aadharCardNo,
-			String address, String mobileNo, boolean isVoted, boolean isApproved) {
+			String address, String mobileNo, boolean isApproved , String role) {
 		super();
 		this.firstName = firstName;
 		this.lastName = lastName;
@@ -59,8 +63,9 @@ public class Voter extends BaseEntity {
 		this.aadharCardNo = aadharCardNo;
 		this.address = address;
 		this.mobileNo = mobileNo;
-		this.isVoted = isVoted;
+	
 		this.isApproved = isApproved;
+		this.role = role;
 	}
 
 	

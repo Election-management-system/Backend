@@ -2,7 +2,6 @@ package com.backend.services;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,6 +11,8 @@ import com.backend.dtos.PendingCandidateResponseDTO;
 import com.backend.entities.Candidate;
 import com.backend.entities.Election;
 import com.backend.entities.Voter;
+import com.backend.exception.AlreadyExistsException;
+import com.backend.exception.ResourceNotFoundException;
 import com.backend.repository.CandidateRepository;
 import com.backend.repository.ElectionRepository;
 import com.backend.repository.VoterRepository;
@@ -20,14 +21,17 @@ import com.backend.repository.VoterRepository;
 @Transactional
 public class CandidateServiceImpl implements CandidateService {
 
-    @Autowired
-    private CandidateRepository candidateRepository;
+    private final CandidateRepository candidateRepository;
+    private final VoterRepository voterRepository;
+    private final ElectionRepository electionRepository;
 
-    @Autowired
-    private VoterRepository voterRepository;
-
-    @Autowired
-    private ElectionRepository electionRepository;
+    public CandidateServiceImpl(CandidateRepository candidateRepository,
+                                VoterRepository voterRepository,
+                                ElectionRepository electionRepository) {
+        this.candidateRepository = candidateRepository;
+        this.voterRepository = voterRepository;
+        this.electionRepository = electionRepository;
+    }
 
     @Override
     public String registerCandidate(CandidateRegisterDTO dto) {
@@ -35,47 +39,50 @@ public class CandidateServiceImpl implements CandidateService {
         // 1️⃣ Fetch voter
         Voter voter = voterRepository.findById(dto.getVoterId())
                 .orElseThrow(() ->
-                        new RuntimeException("Voter not found")
+                        new ResourceNotFoundException(
+                                "Voter not found with ID: " + dto.getVoterId())
                 );
 
+        // 2️⃣ Check voter approval
         if (!voter.isApproved()) {
-            throw new RuntimeException("Voter is not approved");
+            throw new AlreadyExistsException("Voter is not approved");
         }
-        
+
         // 3️⃣ Fetch election
         Election election = electionRepository.findById(dto.getElectionId())
                 .orElseThrow(() ->
-                        new RuntimeException("Election not found")
+                        new ResourceNotFoundException(
+                                "Election not found with ID: " + dto.getElectionId())
                 );
 
-        if (!election.isIsactive()) {
-            throw new RuntimeException("Election is not active for nominations");
-        }
+        // (Optional future rule)
+        // if (!election.isIsactive()) {
+        //     throw new InvalidOperationException("Election is not active for nominations");
+        // }
 
-        // 2️⃣ Ensure voter is not already a candidate
+        // 4️⃣ Ensure voter not already candidate for same election
         Long exists = candidateRepository
                 .existsByVoterDetails_IdAndMyElection_Id(voter.getId(), election.getId());
 
         if (exists != null && exists > 0) {
-            throw new RuntimeException(
-                "Voter is already registered as a candidate for this election"
+            throw new AlreadyExistsException(
+                    "Voter is already registered as a candidate for this election"
             );
         }
 
-        // 4️⃣ Create candidate
+        // 5️⃣ Create candidate
         Candidate candidate = new Candidate();
         candidate.setVoterDetails(voter);
         candidate.setMyElection(election);
         candidate.setPartyName(dto.getPartyName());
         candidate.setManifesto(dto.getManifesto());
+        candidate.setApproved(false); // default pending
 
         candidateRepository.save(candidate);
 
         return "Candidate registered successfully (Pending approval)";
     }
 
-    
-    
     @Override
     public List<CandidateResponseDTO> getAllCandidates() {
 
@@ -104,29 +111,24 @@ public class CandidateServiceImpl implements CandidateService {
                 .toList();
     }
 
-
-
     @Override
     public String approveCandidate(Long candidateId) {
 
         Candidate candidate = candidateRepository.findById(candidateId)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                                 "Candidate not found with ID: " + candidateId)
                 );
 
-        // Optional safety check
         if (candidate.isApproved()) {
-            return "Candidate is already approved";
+            return "Candidate already approved";
         }
 
         candidate.setApproved(true);
         candidateRepository.save(candidate);
 
         return "Candidate approved successfully";
-	}
-
-
+    }
 
     @Override
     public List<PendingCandidateResponseDTO> getPendingCandidates() {
@@ -134,8 +136,7 @@ public class CandidateServiceImpl implements CandidateService {
         return candidateRepository.findPendingCandidatesNative()
                 .stream()
                 .map(row -> {
-                    PendingCandidateResponseDTO dto =
-                            new PendingCandidateResponseDTO();
+                    PendingCandidateResponseDTO dto = new PendingCandidateResponseDTO();
 
                     dto.setCandidateId(((Number) row[0]).longValue());
                     dto.setPartyName((String) row[1]);
@@ -152,9 +153,4 @@ public class CandidateServiceImpl implements CandidateService {
                 })
                 .toList();
     }
-    
-   
-    
-
 }
-

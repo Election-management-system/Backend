@@ -3,7 +3,6 @@ package com.backend.services;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,57 +11,63 @@ import com.backend.dtos.WinnerResponseDTO;
 import com.backend.entities.Candidate;
 import com.backend.entities.Election;
 import com.backend.entities.ElectionResult;
+import com.backend.exception.BadRequestException;
+import com.backend.exception.BusinessRuleException;
+import com.backend.exception.ResourceNotFoundException;
 import com.backend.repository.ElectionRepository;
 import com.backend.repository.ElectionResultRepository;
 import com.backend.repository.VoteRepository;
 
+import lombok.RequiredArgsConstructor;
+
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class ResultServiceImpl implements ResultService {
 
-    @Autowired
-    private VoteRepository voteRepository;
-
-    @Autowired
-    private ElectionRepository electionRepository;
-
-    @Autowired
-    private ElectionResultRepository resultRepository;
+    private final VoteRepository voteRepository;
+    private final ElectionRepository electionRepository;
+    private final ElectionResultRepository resultRepository;
 
     @Override
     public String declareElectionResults(Long electionId) {
 
         Election election = electionRepository.findById(electionId)
                 .orElseThrow(() ->
-                        new RuntimeException("Election not found"));
+                        new ResourceNotFoundException(
+                                "Election not found with ID: " + electionId)
+                );
 
-        // 🔒 must be closed
+        // 🔒 Election must be closed
         if (election.isIsactive()) {
-            throw new RuntimeException(
-                    "Election is still active. Close it first.");
+            throw new BusinessRuleException(
+                    "Election is still active. Close it before declaring results");
         }
 
-        // 🔒 results can be declared ONLY ONCE
+        // 🔒 Results can be declared only once
         if (resultRepository.existsByElection_Id(electionId)) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Results already declared for this election");
         }
 
-        // 🔢 count votes
+        // 🔢 Count votes
         List<Object[]> counts =
                 voteRepository.countVotesByElection(electionId);
 
-        for (Object[] row : counts) {
-            ElectionResult result = new ElectionResult();
+        if (counts.isEmpty()) {
+            throw new BusinessRuleException(
+                    "No votes found for this election");
+        }
 
-            Candidate candidate =
-                    new Candidate();
+        for (Object[] row : counts) {
+
+            Candidate candidate = new Candidate();
             candidate.setId(((Number) row[0]).longValue());
 
+            ElectionResult result = new ElectionResult();
             result.setElection(election);
             result.setCandidate(candidate);
-            result.setTotalVotes(
-                    ((Number) row[4]).longValue());
+            result.setTotalVotes(((Number) row[4]).longValue());
             result.setLastUpdated(LocalDateTime.now());
 
             resultRepository.save(result);
@@ -71,65 +76,65 @@ public class ResultServiceImpl implements ResultService {
         return "Election results declared successfully";
     }
 
-	@Override
-	public List<ElectionResultResponseDTO> getStoredResults(Long electionId) {
-		// TODO Auto-generated method stub
-		return resultRepository.findByElection_Id(electionId)
-	            .stream()
-	            .map(r -> {
-	                ElectionResultResponseDTO dto =
-	                        new ElectionResultResponseDTO();
+    @Override
+    public List<ElectionResultResponseDTO> getStoredResults(Long electionId) {
 
-	                dto.setCandidateId(
-	                        r.getCandidate().getId());
-	                dto.setPartyName(
-	                        r.getCandidate().getPartyName());
-	                dto.setTotalVotes(
-	                        r.getTotalVotes());
+        if (!electionRepository.existsById(electionId)) {
+            throw new ResourceNotFoundException(
+                    "Election not found with ID: " + electionId);
+        }
 
-	                return dto;
-	            })
-	            .toList();
-	}
+        return resultRepository.findByElection_Id(electionId)
+                .stream()
+                .map(r -> {
+                    ElectionResultResponseDTO dto =
+                            new ElectionResultResponseDTO();
 
-	 @Override
-	    public WinnerResponseDTO declareWinner(Long electionId) {
+                    dto.setCandidateId(r.getCandidate().getId());
+                    dto.setPartyName(r.getCandidate().getPartyName());
+                    dto.setTotalVotes(r.getTotalVotes());
 
-	        Election election = electionRepository.findById(electionId)
-	                .orElseThrow(() ->
-	                        new RuntimeException("Election not found"));
+                    return dto;
+                })
+                .toList();
+    }
 
-	        // 🔒 must be closed
-	        if (election.isIsactive()) {
-	            throw new RuntimeException(
-	                    "Election is still active. Close it before declaring winner");
-	        }
+    @Override
+    public WinnerResponseDTO declareWinner(Long electionId) {
 
-	        // 🔒 results must exist
-	        if (!resultRepository.existsByElection_Id(electionId)) {
-	            throw new RuntimeException(
-	                    "Results not declared yet for this election");
-	        }
+        Election election = electionRepository.findById(electionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Election not found with ID: " + electionId)
+                );
 
-	        ElectionResult winner =
-	                resultRepository.findWinnerByElectionId(electionId);
+        // 🔒 Election must be closed
+        if (election.isIsactive()) {
+            throw new BusinessRuleException(
+                    "Election is still active. Close it before declaring winner");
+        }
 
-	        if (winner == null) {
-	            throw new RuntimeException(
-	                    "No votes found for this election");
-	        }
+        // 🔒 Results must exist
+        if (!resultRepository.existsByElection_Id(electionId)) {
+            throw new BadRequestException(
+                    "Results not declared yet for this election");
+        }
 
-	        WinnerResponseDTO dto = new WinnerResponseDTO();
-	        dto.setElectionId(election.getId());
-	        dto.setElectionName(election.getElectionName());
+        ElectionResult winner =
+                resultRepository.findWinnerByElectionId(electionId);
 
-	        dto.setCandidateId(winner.getCandidate().getId());
-	        dto.setPartyName(winner.getCandidate().getPartyName());
-	        dto.setTotalVotes(winner.getTotalVotes());
+        if (winner == null) {
+            throw new BusinessRuleException(
+                    "No votes found to declare a winner");
+        }
 
-	        return dto;
-	    }
+        WinnerResponseDTO dto = new WinnerResponseDTO();
+        dto.setElectionId(election.getId());
+        dto.setElectionName(election.getElectionName());
+        dto.setCandidateId(winner.getCandidate().getId());
+        dto.setPartyName(winner.getCandidate().getPartyName());
+        dto.setTotalVotes(winner.getTotalVotes());
 
-
+        return dto;
+    }
 }
-

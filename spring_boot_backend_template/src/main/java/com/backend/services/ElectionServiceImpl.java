@@ -4,114 +4,130 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.backend.dtos.ElectionCreateDTO;
 import com.backend.dtos.ElectionResponseDTO;
-import com.backend.repository.ElectionRepository;
 import com.backend.entities.Election;
-
+import com.backend.exception.BadRequestException;
+import com.backend.exception.BusinessRuleException;
+import com.backend.exception.ResourceNotFoundException;
+import com.backend.repository.ElectionRepository;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class ElectionServiceImpl implements  ElectionService {
+public class ElectionServiceImpl implements ElectionService {
 
-	@Autowired
-	private  ElectionRepository electionRepository;
-	
-	@Autowired
-	private ModelMapper modelMapper;
-	
-	
-	
-	@Override
-	public List<ElectionResponseDTO> getUpcomingElections() {
+    private final ElectionRepository electionRepository;
+    private final ModelMapper modelMapper;
 
-	    // 1. Get today's date
-	    LocalDate today = LocalDate.now();
+    @Override
+    public List<ElectionResponseDTO> getUpcomingElections() {
 
-	    // 2. Fetch upcoming elections from DB
-	    List<Election> elections =
-	            electionRepository.findByElectionDateGreaterThanEqualAndIsactiveTrueOrderByElectionDateAsc(today);
-	    
-	    
+        LocalDate today = LocalDate.now();
 
-	    // 3. Convert Entity → DTO
-	    return elections.stream()
-	            .map(election -> modelMapper.map(election, ElectionResponseDTO.class))
-	            .toList();
-	}
+        List<Election> elections =
+                electionRepository
+                        .findByElectionDateGreaterThanEqualOrderByElectionDateAsc(today);
+        
 
+        return elections.stream()
+                .map(election ->
+                        modelMapper.map(election, ElectionResponseDTO.class))
+                .toList();
+    }
 
+    @Override
+    public List<ElectionResponseDTO> getAllElections() {
 
-	@Override
-	public List<ElectionResponseDTO> getAllElections() {
-		 // 1. Fetch upcoming elections from DB
-	    List<Election> elections =
-	            electionRepository.findAll();
-	    
-	    // 2. Convert Entity → DTO
-	    return elections.stream()
-	            .map(election -> modelMapper.map(election, ElectionResponseDTO.class))
-	            .toList();
-	}
+        return electionRepository.findAll()
+                .stream()
+                .map(election ->
+                        modelMapper.map(election, ElectionResponseDTO.class))
+                .toList();
+    }
 
+    @Override
+    public String createElection(ElectionCreateDTO dto) {
 
+        // 1️⃣ Validate date flow (INVALID INPUT)
+        if (dto.getNominationStartDate().isAfter(dto.getNominationEndDate())) {
+            throw new BadRequestException(
+                    "Nomination start date cannot be after nomination end date");
+        }
 
-	@Override
-	public String createElection(ElectionCreateDTO dto) {
+        if (dto.getNominationEndDate().isAfter(dto.getCampaignEndDate())) {
+            throw new BadRequestException(
+                    "Nomination end date cannot be after campaign end date");
+        }
 
-	    // 1️⃣ Validate date flow
-	    if (dto.getNominationStartDate().isAfter(dto.getNominationEndDate())) {
-	        throw new RuntimeException("Nomination start date cannot be after nomination end date");
-	    }
+        if (dto.getCampaignEndDate().isAfter(dto.getElectionDate())) {
+            throw new BadRequestException(
+                    "Campaign end date cannot be after election date");
+        }
 
-	    if (dto.getNominationEndDate().isAfter(dto.getCampaignEndDate())) {
-	        throw new RuntimeException("Nomination end date cannot be after campaign end date");
-	    }
+        // 2️⃣ Map DTO → Entity
+        Election election = new Election();
+        election.setElectionName(dto.getElectionName());
+        election.setElectionPost(dto.getElectionPost());
+        election.setElectionDate(dto.getElectionDate());
+        election.setNominationStartDate(dto.getNominationStartDate());
+        election.setNominationEndDate(dto.getNominationEndDate());
+        election.setCampaignEndDate(dto.getCampaignEndDate());
+        election.setElectionNorms(dto.getElectionNorms());
 
-	    if (dto.getCampaignEndDate().isAfter(dto.getElectionDate())) {
-	        throw new RuntimeException("Campaign end date cannot be after election date");
-	    }
+        // 3️⃣ Default status
+        election.setIsactive(false); // admin activates later
 
-	    // 2️⃣ Map DTO → Entity
-	    Election election = new Election();
-	    election.setElectionName(dto.getElectionName());
-	    election.setElectionPost(dto.getElectionPost());
-	    election.setElectionDate(dto.getElectionDate());
-	    election.setNominationStartDate(dto.getNominationStartDate());
-	    election.setNominationEndDate(dto.getNominationEndDate());
-	    election.setCampaignEndDate(dto.getCampaignEndDate());
-	    election.setElectionNorms(dto.getElectionNorms());
+        electionRepository.save(election);
 
-	    // 3️⃣ Default status
-	    election.setIsactive(false); // admin activates later
+        return "Election created successfully";
+    }
 
-	    electionRepository.save(election);
-
-	    return "Election created successfully";
-	}
-	
-	
-	@Override
+    @Override
     public void autoCloseIfExpired(Election election) {
 
-        // check only if currently active
         if (election.isIsactive()
-                && election.getElectionDate()
-                           .isBefore(LocalDate.now())) {
+                && election.getElectionDate().isBefore(LocalDate.now())) {
 
             election.setIsactive(false);
             electionRepository.save(election);
         }
     }
 
+    @Override
+    public String activateElection(Long electionId) {
 
-	
+        Election election = electionRepository.findById(electionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Election not found with ID: " + electionId)
+                );
 
+        // BUSINESS RULES
+        if (election.isIsactive()) {
+            throw new BusinessRuleException("Election is already active");
+        }
+
+        LocalDate today = LocalDate.now();
+
+        if (today.isBefore(election.getNominationStartDate())) {
+            throw new BusinessRuleException(
+                    "Election cannot be activated before nomination start date");
+        }
+
+        if (today.isAfter(election.getElectionDate())) {
+            throw new BusinessRuleException(
+                    "Election date is over, cannot activate");
+        }
+
+        election.setIsactive(true);
+        electionRepository.save(election);
+
+        return "Election activated successfully";
+    }
 }
