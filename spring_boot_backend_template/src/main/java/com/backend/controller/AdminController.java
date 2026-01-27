@@ -3,6 +3,7 @@ package com.backend.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,91 +16,77 @@ import com.backend.services.ResultService;
 import com.backend.services.VoterService;
 
 import io.swagger.v3.oas.annotations.Operation;
-import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/admin")
 @CrossOrigin(origins = "http://localhost:3000")
 @Validated
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
     @Autowired
     private ElectionService electionService;
-    
+
     @Autowired
     private CandidateService candidateService;
-    
+
     @Autowired
     private VoterService voterService;
-    
+
     @Autowired
     private ResultService resultService;
-    
-    
-    @Autowired
-    private  AdminService adminService;
-//    
-//    public AdminController(AdminService adminService) {
-//        this.adminService = adminService;
-//    }
-//    
-//    // 🔐 ADMIN ONLY
-//    @PostMapping("/register")
-//    public ResponseEntity<?> registerAdmin(
-//            @RequestBody AdminRegisterDTO dto) {
-//
-//        return ResponseEntity.ok(adminService.registerAdmin(dto));
-//    }
 
+    @Autowired
+    private AdminService adminService;
+
+    /**
+     * Admin registration endpoint.
+     * NOTE: In production, this should be restricted or disabled after initial
+     * setup.
+     * Consider using a setup token or restricting to localhost only.
+     */
     @PostMapping("/register")
-    @PermitAll
-    public ResponseEntity<?> registerAdmin(@RequestBody AdminRegisterDTO dto) {
+    @PreAuthorize("permitAll()") // Override class-level restriction for initial admin setup
+    public ResponseEntity<?> registerAdmin(@RequestBody @Valid AdminRegisterDTO dto) {
         return ResponseEntity.ok(adminService.registerAdmin(dto));
     }
 
-
-    
     @GetMapping("/candidates")
     public ResponseEntity<?> getAllCandidates() {
 
         return ResponseEntity.ok(
-                candidateService.getAllCandidates()
-        );
+                candidateService.getAllCandidates());
     }
-    
+
     @GetMapping("/candidates/pending")
     public ResponseEntity<?> getPendingCandidates() {
 
         return ResponseEntity.ok(
-                candidateService.getPendingCandidates()
-        );
+                candidateService.getPendingCandidates());
     }
-    
+
     @PutMapping("/candidates/{candidateId}/approve")
     public ResponseEntity<?> approveCandidate(
             @PathVariable Long candidateId) {
 
         return ResponseEntity.ok(
-                candidateService.approveCandidate(candidateId)
-        );
+                candidateService.approveCandidate(candidateId));
     }
-    
+
     @GetMapping("/voters/pending")
     public ResponseEntity<?> getPendingVoters() {
 
         return ResponseEntity.ok(
-                voterService.getPendingVoters()
-        );
+                voterService.getPendingVoters());
     }
-    
+
     @PutMapping("/voters/{voterId}/approve")
     public ResponseEntity<?> approveVoter(
             @PathVariable Long voterId) {
 
         return ResponseEntity.ok(
-                voterService.approveVoter(voterId)
-        );
+                voterService.approveVoter(voterId));
     }
 
     @PostMapping("/elections")
@@ -111,32 +98,29 @@ public class AdminController {
                 .status(HttpStatus.CREATED)
                 .body(electionService.createElection(dto));
     }
-    
+
     @PutMapping("/elections/{electionId}/activate")
     public ResponseEntity<?> activateElection(
             @PathVariable Long electionId) {
 
         return ResponseEntity.ok(
-                electionService.activateElection(electionId)
-        );
+                electionService.activateElection(electionId));
     }
-    
+
     @PostMapping("/elections/{electionId}/declare-winner")
     public ResponseEntity<?> declareWinner(
             @PathVariable Long electionId) {
 
         return ResponseEntity.ok(
-                resultService.declareWinner(electionId)
-        );
+                resultService.declareWinner(electionId));
     }
-    
+
     @PostMapping("/elections/{electionId}/declare-results")
     public ResponseEntity<?> declareResults(
             @PathVariable Long electionId) {
 
         return ResponseEntity.ok(
-                resultService.declareElectionResults(electionId)
-        );
+                resultService.declareElectionResults(electionId));
     }
 
 }
