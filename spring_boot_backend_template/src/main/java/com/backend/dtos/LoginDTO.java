@@ -1,5 +1,6 @@
 package com.backend.dtos;
 
+import jakarta.validation.constraints.Email;
 import lombok.Getter;
 
 import lombok.Setter;
@@ -8,6 +9,7 @@ import lombok.Setter;
 @Setter
 public class LoginDTO {
 	
+	@Email
 	private String email;
 	
 	private String password; 

@@ -21,136 +21,129 @@ import com.backend.repository.VoterRepository;
 @Transactional
 public class CandidateServiceImpl implements CandidateService {
 
-    private final CandidateRepository candidateRepository;
-    private final VoterRepository voterRepository;
-    private final ElectionRepository electionRepository;
+        private final CandidateRepository candidateRepository;
+        private final VoterRepository voterRepository;
+        private final ElectionRepository electionRepository;
 
-    public CandidateServiceImpl(CandidateRepository candidateRepository,
-                                VoterRepository voterRepository,
-                                ElectionRepository electionRepository) {
-        this.candidateRepository = candidateRepository;
-        this.voterRepository = voterRepository;
-        this.electionRepository = electionRepository;
-    }
-
-    @Override
-    public String registerCandidate(CandidateRegisterDTO dto) {
-
-        // 1️⃣ Fetch voter
-        Voter voter = voterRepository.findById(dto.getVoterId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Voter not found with ID: " + dto.getVoterId())
-                );
-
-        // 2️⃣ Check voter approval
-        if (!voter.isApproved()) {
-            throw new AlreadyExistsException("Voter is not approved");
+        public CandidateServiceImpl(CandidateRepository candidateRepository,
+                        VoterRepository voterRepository,
+                        ElectionRepository electionRepository) {
+                this.candidateRepository = candidateRepository;
+                this.voterRepository = voterRepository;
+                this.electionRepository = electionRepository;
         }
 
-        // 3️⃣ Fetch election
-        Election election = electionRepository.findById(dto.getElectionId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Election not found with ID: " + dto.getElectionId())
-                );
+        @Override
+        public String registerCandidate(CandidateRegisterDTO dto) {
 
-        // (Optional future rule)
-        // if (!election.isIsactive()) {
-        //     throw new InvalidOperationException("Election is not active for nominations");
-        // }
+                // 1️⃣ Fetch voter
+                Voter voter = voterRepository.findById(dto.getVoterId())
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Voter not found with ID: " + dto.getVoterId()));
 
-        // 4️⃣ Ensure voter not already candidate for same election
-        Long exists = candidateRepository
-                .existsByVoterDetails_IdAndMyElection_Id(voter.getId(), election.getId());
+                // 2️⃣ Check voter approval
+                if (!voter.isApproved()) {
+                        throw new AlreadyExistsException("Voter is not approved");
+                }
 
-        if (exists != null && exists > 0) {
-            throw new AlreadyExistsException(
-                    "Voter is already registered as a candidate for this election"
-            );
+                // 3️⃣ Fetch election
+                Election election = electionRepository.findById(dto.getElectionId())
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Election not found with ID: " + dto.getElectionId()));
+
+                // (Optional future rule)
+                // if (!election.isIsactive()) {
+                // throw new InvalidOperationException("Election is not active for
+                // nominations");
+                // }
+
+                // 4️⃣ Ensure voter not already candidate for same election
+                Long exists = candidateRepository
+                                .existsByVoterDetails_IdAndMyElection_Id(voter.getId(), election.getId());
+
+                if (exists != null && exists > 0) {
+                        throw new AlreadyExistsException(
+                                        "Voter is already registered as a candidate for this election");
+                }
+
+                // 5️⃣ Create candidate
+                Candidate candidate = new Candidate();
+                candidate.setVoterDetails(voter);
+                candidate.setMyElection(election);
+                candidate.setPartyName(dto.getPartyName());
+                candidate.setManifesto(dto.getManifesto());
+                candidate.setApproved(false); // default pending
+
+                candidateRepository.save(candidate);
+
+                return "Candidate registered successfully (Pending approval)";
         }
 
-        // 5️⃣ Create candidate
-        Candidate candidate = new Candidate();
-        candidate.setVoterDetails(voter);
-        candidate.setMyElection(election);
-        candidate.setPartyName(dto.getPartyName());
-        candidate.setManifesto(dto.getManifesto());
-        candidate.setApproved(false); // default pending
+        @Override
+        public List<CandidateResponseDTO> getAllCandidates() {
 
-        candidateRepository.save(candidate);
+                return candidateRepository.findAll()
+                                .stream()
+                                .map(candidate -> {
+                                        CandidateResponseDTO dto = new CandidateResponseDTO();
 
-        return "Candidate registered successfully (Pending approval)";
-    }
+                                        dto.setCandidateId(candidate.getId());
+                                        dto.setPartyName(candidate.getPartyName());
+                                        dto.setManifesto(candidate.getManifesto());
+                                        dto.setApproved(candidate.isApproved());
 
-    @Override
-    public List<CandidateResponseDTO> getAllCandidates() {
+                                        dto.setVoterId(candidate.getVoterDetails().getId());
+                                        dto.setVoterName(
+                                                        candidate.getVoterDetails().getFirstName() + " " +
+                                                                        candidate.getVoterDetails().getLastName());
+                                        dto.setVoterEmail(candidate.getVoterDetails().getEmail());
 
-        return candidateRepository.findAll()
-                .stream()
-                .map(candidate -> {
-                    CandidateResponseDTO dto = new CandidateResponseDTO();
+                                        dto.setElectionId(candidate.getMyElection().getId());
+                                        dto.setElectionName(candidate.getMyElection().getElectionName());
 
-                    dto.setCandidateId(candidate.getId());
-                    dto.setPartyName(candidate.getPartyName());
-                    dto.setManifesto(candidate.getManifesto());
-                    dto.setApproved(candidate.isApproved());
-
-                    dto.setVoterId(candidate.getVoterDetails().getId());
-                    dto.setVoterName(
-                            candidate.getVoterDetails().getFirstName() + " " +
-                            candidate.getVoterDetails().getLastName()
-                    );
-                    dto.setVoterEmail(candidate.getVoterDetails().getEmail());
-
-                    dto.setElectionId(candidate.getMyElection().getId());
-                    dto.setElectionName(candidate.getMyElection().getElectionName());
-
-                    return dto;
-                })
-                .toList();
-    }
-
-    @Override
-    public String approveCandidate(Long candidateId) {
-
-        Candidate candidate = candidateRepository.findById(candidateId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Candidate not found with ID: " + candidateId)
-                );
-
-        if (candidate.isApproved()) {
-            return "Candidate already approved";
+                                        return dto;
+                                })
+                                .toList();
         }
 
-        candidate.setApproved(true);
-        candidateRepository.save(candidate);
+        @Override
+        public String approveCandidate(Long candidateId) {
 
-        return "Candidate approved successfully";
-    }
+                Candidate candidate = candidateRepository.findById(candidateId)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Candidate not found with ID: " + candidateId));
 
-    @Override
-    public List<PendingCandidateResponseDTO> getPendingCandidates() {
+                if (candidate.isApproved()) {
+                        return "Candidate already approved";
+                }
 
-        return candidateRepository.findPendingCandidatesNative()
-                .stream()
-                .map(row -> {
-                    PendingCandidateResponseDTO dto = new PendingCandidateResponseDTO();
+                candidate.setApproved(true);
+                candidateRepository.save(candidate);
 
-                    dto.setCandidateId(((Number) row[0]).longValue());
-                    dto.setPartyName((String) row[1]);
-                    dto.setManifesto((String) row[2]);
+                return "Candidate approved successfully";
+        }
 
-                    dto.setVoterId(((Number) row[3]).longValue());
-                    dto.setVoterName((String) row[4]);
-                    dto.setVoterEmail((String) row[5]);
+        @Override
+        public List<PendingCandidateResponseDTO> getPendingCandidates() {
 
-                    dto.setElectionId(((Number) row[6]).longValue());
-                    dto.setElectionName((String) row[7]);
+                return candidateRepository.findPendingCandidatesNative()
+                                .stream()
+                                .map(row -> {
+                                        PendingCandidateResponseDTO dto = new PendingCandidateResponseDTO();
 
-                    return dto;
-                })
-                .toList();
-    }
+                                        dto.setCandidateId(((Number) row[0]).longValue());
+                                        dto.setPartyName((String) row[1]);
+                                        dto.setManifesto((String) row[2]);
+
+                                        dto.setVoterId(((Number) row[3]).longValue());
+                                        dto.setVoterName((String) row[4]);
+                                        dto.setVoterEmail((String) row[5]);
+
+                                        dto.setElectionId(((Number) row[6]).longValue());
+                                        dto.setElectionName((String) row[7]);
+
+                                        return dto;
+                                })
+                                .toList();
+        }
 }
