@@ -6,7 +6,6 @@ import java.util.List;
 import com.backend.dtos.PendingVoterResponseDTO;
 import com.backend.dtos.VoterRegisterDTO;
 import com.backend.dtos.VoterResponseDTO;
-import com.backend.entities.Voter;
 
 import jakarta.validation.Valid;
 
